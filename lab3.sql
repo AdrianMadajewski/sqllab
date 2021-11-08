@@ -251,93 +251,275 @@ EXEC IntZespoly.DODAJZESPOL('Zespoly NOWY', 'Adres nowy');
 SELECT * FROM zespoly;
 
 -- 8.
+CREATE OR REPLACE PACKAGE IntZespoly IS
+
+    PROCEDURE DodajZespol(pid_zesp INTEGER ,pnazwa VARCHAR, padres VARCHAR) ;
+
+    PROCEDURE UsunZespolId(pid_zesp INTEGER) ;
+
+    PROCEDURE UsunZespolNazwa(pnazwa VARCHAR) ;
+
+    PROCEDURE Modyfikuj(pid_zesp INTEGER, pnazwa VARCHAR, padres VARCHAR);
+
+    FUNCTION PokazId(pnazwa VARCHAR)
+
+        RETURN INTEGER;
+
+    FUNCTION PokazNazwe(pid_zesp INTEGER)
+
+        RETURN VARCHAR;
+
+    FUNCTION PokazAdres(pid_zesp INTEGER)
+
+        RETURN VARCHAR;
+        
+    exZleID EXCEPTION;
+    exZlaNazwa EXCEPTION;
+
+END IntZespoly;
+
 CREATE OR REPLACE PACKAGE BODY IntZespoly IS
-    PROCEDURE DodajZespol(
-        pNazwa zespoly.nazwa%type,
-        pAdres zespoly.adres%type
-    ) IS
+
+    PROCEDURE DodajZespol(pid_zesp INTEGER ,pnazwa VARCHAR, padres VARCHAR) IS
     exIstniejeNazwa EXCEPTION;
     exIstniejeID EXCEPTION;
-    BEGIN
-        DECLARE
-            CURSOR cID IS
-                SELECT id_zesp FROM zespoly ORDER BY id_zesp ASC;
-            CURSOR cNazwa IS
-                SELECT nazwa FROM zespoly ORDER BY nazwa ASC;
+        BEGIN
+            DECLARE
+                CURSOR cID IS
+                    SELECT id_zesp 
+                    FROM zespoly
+                    ORDER BY id_zesp asc;
+                CURSOR cNazwa is
+                    SELECT nazwa
+                    FROM zespoly
+                    ORDER BY nazwa asc;
+        BEGIN
+        
+            FOR vID IN cID LOOP
+                IF vID.id_zesp = pid_zesp THEN
+                    RAISE exIstniejeID;
+                END IF;
+            END LOOP;
+            
+            FOR vNazwa IN cNazwa LOOP
+                IF (vNazwa.nazwa = pnazwa) THEN
+                    RAISE exIstniejeNazwa;
+                END IF;
+            END LOOP;
+            
+                    
+            INSERT INTO zespoly(id_zesp,  nazwa, adres)
 
-        INSERT INTO zespoly (id_zesp, nazwa, adres)
-        VALUES ((SELECT MAX(id_zesp) + 1 FROM zespoly), pNazwa, pAdres);
+            VALUES (pid_zesp, pnazwa, padres);
+            
+            
+            EXCEPTION
+                WHEN exIstniejeNazwa THEN
+                    DBMS_OUTPUT.PUT_LINE('Probujesz dodac zespol o istniejacej juz nazwie');
+                WHEN exIstniejeID THEN
+                    DBMS_OUTPUT.PUT_LINE('Probujesz dodac zespol o istniejacym juz ID');
+        END;
+                
+    END DodajZespol;
 
-        IF SQL%NOTFOUND THEN
-          DBMS_OUTPUT.PUT_LINE('Nie udało się dodac zespolu o nazwie: ' || pNazwa);
-        END IF;
-    END;
+        
 
-    PROCEDURE UsunZespolId(
-        pIdZesp zespoly.id_zesp%type
-    ) IS
-    BEGIN
-        DELETE FROM zespoly
-        WHERE id_zesp = pIdZesp;
+    PROCEDURE UsunZespolId(pid_zesp INTEGER) IS
+    vTemp INTEGER;
+    exNiepoprawneID EXCEPTION;
+        BEGIN
+            DECLARE
+                CURSOR cID is
+                    SELECT id_zesp
+                    FROM zespoly;
+        
+        BEGIN
+            vTemp := 0;
+            FOR vID IN cID LOOP
+                IF (vID.id_zesp = pid_zesp) THEN
+                    vTemp := 1;
+                END IF;
+            END LOOP;
+            
+            IF (vTemp != 1) THEN
+                RAISE exNiepoprawneID;
+            END IF;
+    
+            DELETE FROM zespoly where id_zesp = pid_zesp;
+            
+            EXCEPTION
+                WHEN exNiepoprawneID THEN
+                    DBMS_OUTPUT.PUT_LINE('nie istnieje zespol o podanym ID');
+                
+        END;
+    END UsunZespolId;
 
-        IF SQL%NOTFOUND THEN
-          DBMS_OUTPUT.PUT_LINE('Nie udało się usunac zespolu od id: ' || pIdZesp);
-        END IF;
-    END;
+        
 
-    PROCEDURE UsunZespolNazwa(
-        pNazwa zespoly.nazwa%type
-    ) IS
-    BEGIN
-        DELETE FROM zespoly
-        WHERE nazwa = pNazwa;
+    PROCEDURE UsunZespolNazwa(pnazwa VARCHAR) IS
+    vTemp INTEGER;
+    exNiepoprawnaNazwa EXCEPTION;
+        BEGIN
+            DECLARE
+                CURSOR cNazwa is
+                    SELECT nazwa
+                    FROM zespoly
+                    ORDER BY nazwa asc;
+        BEGIN
+            vTemp := 0;
+            
+            FOR vNazwa IN cNazwa LOOP
+                IF (vNazwa.nazwa = pnazwa) THEN
+                    vTemp := 1;
+                END IF;
+            END LOOP;
+            
+            IF (vTemp != 1) THEN
+                RAISE exNiepoprawnaNazwa;
+            END IF;
+        
+            DELETE FROM zespoly where nazwa = pnazwa;
+            
+        
+            EXCEPTION
+                WHEN exNiepoprawnaNazwa THEN
+                    DBMS_OUTPUT.PUT_LINE('nie istnieje zespol o podanej nazwie');
+        END;
 
-        IF SQL%NOTFOUND THEN
-          DBMS_OUTPUT.PUT_LINE('Nie udało się usunac zespolu o nazwie: ' || pNazwa);
-        END IF;
-    END;
+    END UsunZespolNazwa;
 
-    PROCEDURE ModyfikujZespol(
-        pIdZesp zespoly.id_zesp%type,
-        pNazwa zespoly.nazwa%type,
-        pAdres zespoly.adres%type
-    ) IS
-    BEGIN
-        UPDATE zespoly
-        SET
-            nazwa = pNazwa,
-            adres = pAdres
-        WHERE id_zesp = pIdZesp;
+        
 
-        IF SQL%NOTFOUND THEN
-          DBMS_OUTPUT.PUT_LINE('Nie udało się zmodyfikowac danych zespolu o id: ' || pIdZesp);
-        END IF;
-    END;
+    PROCEDURE Modyfikuj(pid_zesp INTEGER, pnazwa VARCHAR, padres VARCHAR) IS
+    exIstniejeNazwa EXCEPTION;
+    exNiepoprawneID EXCEPTION;
+    vTemp INTEGER;
+        BEGIN
+            DECLARE
+                CURSOR cID IS
+                    SELECT id_zesp 
+                    FROM zespoly
+                    ORDER BY id_zesp asc;
+                CURSOR cNazwa is
+                    SELECT nazwa
+                    FROM zespoly
+                    ORDER BY nazwa asc;
 
-    FUNCTION ZnajdzIdZespolu(
-        pNazwa zespoly.nazwa%type
-    ) RETURN zespoly.id_zesp%type IS
-        vIdZesp zespoly.id_zesp%type;
-    BEGIN
-        SELECT ID_ZESP INTO vIdZesp FROM zespoly WHERE nazwa = pNazwa;
-        RETURN vIdZesp;
-    END;
+        BEGIN
+            vTemp := 0;
+            FOR vNazwa IN cNazwa LOOP
+                IF (vNazwa.nazwa = pnazwa) THEN
+                    RAISE exIstniejeNazwa;
+                END IF;
+            END LOOP;
+            
+            FOR vID IN cID LOOP
+                IF (vID.id_zesp = pid_zesp) THEN
+                    vTemp := 1;
+                END IF;
+            END LOOP;
+            
+            IF (vTemp != 1) THEN
+                RAISE exNiepoprawneID;
+            END IF;
+            
+            UPDATE zespoly
 
-    FUNCTION ZnajdzNazweZespolu(
-        pIdZesp zespoly.id_zesp%type
-    ) RETURN zespoly.nazwa%type IS
-        vNazwa zespoly.nazwa%type;
-    BEGIN
-        SELECT nazwa INTO vNazwa FROM zespoly WHERE id_zesp = pIdZesp;
-        RETURN vNazwa; 
-    END;
+            SET nazwa = pnazwa, adres = padres
 
-    FUNCTION ZnajdzAdresZespolu(
-        pIdZesp zespoly.id_zesp%type
-    ) RETURN zespoly.adres%type IS
-        vAdres zespoly.adres%type;
-    BEGIN
-        SELECT adres INTO vAdres FROM zespoly WHERE id_zesp = pIdZesp;
-        RETURN vAdres;
-    END;
+            WHERE id_zesp = pid_zesp;
+            
+        
+        
+            EXCEPTION
+                WHEN exIstniejeNazwa THEN
+                    DBMS_OUTPUT.PUT_LINE('Istnieje juz zespol o takiej nazwie');
+                WHEN exNiepoprawneID THEN
+                    DBMS_OUTPUT.PUT_LINE('nie istnieje zespol o takim ID');
+                 
+        END;
+
+    END Modyfikuj;
+
+        
+
+        
+
+    FUNCTION PokazId(pnazwa VARCHAR)
+
+        RETURN INTEGER IS
+
+            pid_zesp INTEGER;
+
+        BEGIN
+
+            SELECT id_zesp INTO pid_zesp FROM zespoly where nazwa = pnazwa;
+
+            RETURN pid_zesp;
+            
+            EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                    RAISE exZlaNazwa;
+
+        END PokazId;
+
+        
+
+    FUNCTION PokazNazwe(pid_zesp INTEGER)
+
+        RETURN VARCHAR IS
+
+            pnazwa VARCHAR(20);
+
+        BEGIN
+
+            SELECT nazwa INTO pnazwa FROM zespoly where id_zesp = pid_zesp;
+
+            RETURN pnazwa;
+            
+            EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                    RAISE exZleID;
+
+        END PokazNazwe;
+
+        
+
+    FUNCTION PokazAdres(pid_zesp INTEGER)
+
+        RETURN VARCHAR IS
+
+            padres VARCHAR(20);
+
+        BEGIN
+
+            SELECT adres INTO padres FROM zespoly where id_zesp = pid_zesp;
+
+            RETURN padres;
+            
+            EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                    RAISE exZleID;
+
+        END PokazAdres;
+
+        
+
 END IntZespoly;
+
+
+BEGIN
+    IntZespoly.DodajZespol(10,'A','B');
+    IntZespoly.UsunZespolId(100);
+    IntZespoly.UsunZespolNazwa('A');
+    IntZespoly.Modyfikuj(100,'a','b');
+    IntZespoly.Modyfikuj(10,'BADANIA OPERACYJNE','b');
+    DBMS_OUTPUT.PUT_LINE(IntZespoly.PokazId('a'));
+    
+    EXCEPTION
+        WHEN IntZespoly.exZleID THEN
+            DBMS_OUTPUT.PUT_LINE('Nie istnieje zespol o takim ID');
+        WHEN IntZespoly.exZlaNazwa THEN
+            DBMS_OUTPUT.PUT_LINE('Nie istnieje zespol o takiej nazwie');
+    
+END;
