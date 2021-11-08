@@ -252,47 +252,39 @@ SELECT * FROM zespoly;
 
 -- 8.
 CREATE OR REPLACE PACKAGE IntZespoly IS
-
-    PROCEDURE DodajZespol(pid_zesp INTEGER ,pnazwa VARCHAR, padres VARCHAR) ;
-
-    PROCEDURE UsunZespolId(pid_zesp INTEGER) ;
-
-    PROCEDURE UsunZespolNazwa(pnazwa VARCHAR) ;
-
-    PROCEDURE Modyfikuj(pid_zesp INTEGER, pnazwa VARCHAR, padres VARCHAR);
-
-    FUNCTION PokazId(pnazwa VARCHAR)
-
-        RETURN INTEGER;
-
-    FUNCTION PokazNazwe(pid_zesp INTEGER)
-
-        RETURN VARCHAR;
-
-    FUNCTION PokazAdres(pid_zesp INTEGER)
-
-        RETURN VARCHAR;
+    PROCEDURE DodajZespol(pid_zesp zespoly.id_zesp%type ,pnazwa zespoly.nazwa%type, padres zespoly.adres%type);
+    PROCEDURE UsunZespolId(pid_zesp zespoly.id_zesp%type);
+    PROCEDURE UsunZespolNazwa(pnazwa zespoly.nazwa%type);
+    PROCEDURE Modyfikuj(pid_zesp zespoly.id_zesp%type, pnazwa zespoly.nazwa%type, padres zespoly.adres%type);
+    FUNCTION PokazId(pnazwa zespoly.nazwa%type) RETURN zespoly.id_zesp%type;
+    FUNCTION PokazNazwe(pid_zesp zespoly.id_zesp%type) RETURN zespoly.nazwa%type;
+    FUNCTION PokazAdres(pid_zesp zespoly.id_zesp%type) RETURN zespoly.adres%type;
         
     exZleID EXCEPTION;
     exZlaNazwa EXCEPTION;
+
+    PRAGMA EXCEPTION_INIT(exZleID, -2290); 
+    PRAGMA EXCEPTION_INIT(exZlaNazwa, -2291); 
 
 END IntZespoly;
 
 CREATE OR REPLACE PACKAGE BODY IntZespoly IS
 
-    PROCEDURE DodajZespol(pid_zesp INTEGER ,pnazwa VARCHAR, padres VARCHAR) IS
+    PROCEDURE DodajZespol(pid_zesp zespoly.id_zesp%type ,pnazwa zespoly.nazwa%type, padres zespoly.adres%type) IS
     exIstniejeNazwa EXCEPTION;
     exIstniejeID EXCEPTION;
+    PRAGMA EXCEPTION_INIT(exIstniejeNazwa, -2292); 
+    PRAGMA EXCEPTION_INIT(exIstniejeID, -2293); 
         BEGIN
             DECLARE
                 CURSOR cID IS
                     SELECT id_zesp 
                     FROM zespoly
-                    ORDER BY id_zesp asc;
+                    ORDER BY id_zesp ASC;
                 CURSOR cNazwa is
                     SELECT nazwa
                     FROM zespoly
-                    ORDER BY nazwa asc;
+                    ORDER BY nazwa ASC;
         BEGIN
         
             FOR vID IN cID LOOP
@@ -307,26 +299,27 @@ CREATE OR REPLACE PACKAGE BODY IntZespoly IS
                 END IF;
             END LOOP;
             
-                    
             INSERT INTO zespoly(id_zesp,  nazwa, adres)
-
             VALUES (pid_zesp, pnazwa, padres);
-            
             
             EXCEPTION
                 WHEN exIstniejeNazwa THEN
-                    DBMS_OUTPUT.PUT_LINE('Probujesz dodac zespol o istniejacej juz nazwie');
+                    DBMS_OUTPUT.PUT_LINE('Probujesz dodac zespol o istniejacej juz nazwie ' || pnazwa);
                 WHEN exIstniejeID THEN
-                    DBMS_OUTPUT.PUT_LINE('Probujesz dodac zespol o istniejacym juz ID');
+                    DBMS_OUTPUT.PUT_LINE('Probujesz dodac zespol o istniejacym juz ID ' || pid_zesp);
+                WHEN OTHERS THEN
+                    DBMS_OUTPUT.PUT_LINE('Wystąpił błąd ' || SQLCODE); 
+                    DBMS_OUTPUT.PUT_LINE(SQLERRM);
         END;
                 
     END DodajZespol;
 
         
 
-    PROCEDURE UsunZespolId(pid_zesp INTEGER) IS
-    vTemp INTEGER;
+    PROCEDURE UsunZespolId(pid_zesp zespoly.id_zesp%type) IS
+    vTemp NUMBER; -- BOOL
     exNiepoprawneID EXCEPTION;
+    PRAGMA EXCEPTION_INIT(exNiepoprawneID, -2294); 
         BEGIN
             DECLARE
                 CURSOR cID is
@@ -349,16 +342,20 @@ CREATE OR REPLACE PACKAGE BODY IntZespoly IS
             
             EXCEPTION
                 WHEN exNiepoprawneID THEN
-                    DBMS_OUTPUT.PUT_LINE('nie istnieje zespol o podanym ID');
+                    DBMS_OUTPUT.PUT_LINE('Nie istnieje zespol o podanym ID ' || pid_zesp);
+                WHEN OTHERS THEN
+                    DBMS_OUTPUT.PUT_LINE('Wystąpił błąd ' || SQLCODE); 
+                    DBMS_OUTPUT.PUT_LINE(SQLERRM);
                 
         END;
     END UsunZespolId;
 
         
 
-    PROCEDURE UsunZespolNazwa(pnazwa VARCHAR) IS
-    vTemp INTEGER;
+    PROCEDURE UsunZespolNazwa(pnazwa zespoly.nazwa%type) IS
+    vTemp INTEGER; -- BOOL
     exNiepoprawnaNazwa EXCEPTION;
+    PRAGMA EXCEPTION_INIT(exNiepoprawnaNazwa, -2295); 
         BEGIN
             DECLARE
                 CURSOR cNazwa is
@@ -383,17 +380,21 @@ CREATE OR REPLACE PACKAGE BODY IntZespoly IS
         
             EXCEPTION
                 WHEN exNiepoprawnaNazwa THEN
-                    DBMS_OUTPUT.PUT_LINE('nie istnieje zespol o podanej nazwie');
+                    DBMS_OUTPUT.PUT_LINE('Nie istnieje zespol o podanej nazwie ' || pnazwa);
+                WHEN OTHERS THEN
+                    DBMS_OUTPUT.PUT_LINE('Wystąpił błąd ' || SQLCODE); 
+                    DBMS_OUTPUT.PUT_LINE(SQLERRM);
         END;
 
     END UsunZespolNazwa;
 
-        
 
-    PROCEDURE Modyfikuj(pid_zesp INTEGER, pnazwa VARCHAR, padres VARCHAR) IS
+    PROCEDURE Modyfikuj(pid_zesp zespoly.id_zesp%type, pnazwa zespoly.nazwa%type, padres zespoly.adres%type) IS
     exIstniejeNazwa EXCEPTION;
     exNiepoprawneID EXCEPTION;
-    vTemp INTEGER;
+    PRAGMA EXCEPTION_INIT(exIstniejeNazwa, -2296); 
+    PRAGMA EXCEPTION_INIT(exNiepoprawneID, -2297); 
+    vTemp INTEGER; -- BOOL
         BEGIN
             DECLARE
                 CURSOR cID IS
@@ -424,77 +425,53 @@ CREATE OR REPLACE PACKAGE BODY IntZespoly IS
             END IF;
             
             UPDATE zespoly
-
             SET nazwa = pnazwa, adres = padres
-
             WHERE id_zesp = pid_zesp;
             
-        
-        
             EXCEPTION
                 WHEN exIstniejeNazwa THEN
-                    DBMS_OUTPUT.PUT_LINE('Istnieje juz zespol o takiej nazwie');
+                    DBMS_OUTPUT.PUT_LINE('Istnieje juz zespol o nazwie ' || pnazwa);
                 WHEN exNiepoprawneID THEN
-                    DBMS_OUTPUT.PUT_LINE('nie istnieje zespol o takim ID');
+                    DBMS_OUTPUT.PUT_LINE('Nie istnieje zespol o ID ' || pid_zesp);
+                WHEN OTHERS THEN
+                    DBMS_OUTPUT.PUT_LINE('Wystąpił błąd ' || SQLCODE); 
+                    DBMS_OUTPUT.PUT_LINE(SQLERRM);
                  
         END;
 
     END Modyfikuj;
 
-        
-
-        
-
-    FUNCTION PokazId(pnazwa VARCHAR)
-
-        RETURN INTEGER IS
-
-            pid_zesp INTEGER;
+    FUNCTION PokazId(pnazwa zespoly.nazwa%type) 
+        RETURN zespoly.id_zesp%type IS pid_zesp zespoly.id_zesp%type;
 
         BEGIN
-
             SELECT id_zesp INTO pid_zesp FROM zespoly where nazwa = pnazwa;
-
             RETURN pid_zesp;
             
             EXCEPTION
                 WHEN NO_DATA_FOUND THEN
                     RAISE exZlaNazwa;
 
-        END PokazId;
+    END PokazId;
 
-        
-
-    FUNCTION PokazNazwe(pid_zesp INTEGER)
-
-        RETURN VARCHAR IS
-
-            pnazwa VARCHAR(20);
-
+    FUNCTION PokazNazwe(pid_zesp zespoly.id_zesp%type) 
+        RETURN zespoly.nazwa%type IS pnazwa zespoly.nazwa%type;
         BEGIN
-
             SELECT nazwa INTO pnazwa FROM zespoly where id_zesp = pid_zesp;
-
             RETURN pnazwa;
             
             EXCEPTION
                 WHEN NO_DATA_FOUND THEN
                     RAISE exZleID;
 
-        END PokazNazwe;
+    END PokazNazwe;
 
         
 
-    FUNCTION PokazAdres(pid_zesp INTEGER)
-
-        RETURN VARCHAR IS
-
-            padres VARCHAR(20);
-
+    FUNCTION PokazAdres(pid_zesp zespoly.id_zesp%type)
+        RETURN zespoly.adres%type IS padres zespoly.adres%type;
         BEGIN
-
             SELECT adres INTO padres FROM zespoly where id_zesp = pid_zesp;
-
             RETURN padres;
             
             EXCEPTION
@@ -502,8 +479,6 @@ CREATE OR REPLACE PACKAGE BODY IntZespoly IS
                     RAISE exZleID;
 
         END PokazAdres;
-
-        
 
 END IntZespoly;
 
@@ -521,5 +496,8 @@ BEGIN
             DBMS_OUTPUT.PUT_LINE('Nie istnieje zespol o takim ID');
         WHEN IntZespoly.exZlaNazwa THEN
             DBMS_OUTPUT.PUT_LINE('Nie istnieje zespol o takiej nazwie');
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Wystąpił błąd ' || SQLCODE); 
+            DBMS_OUTPUT.PUT_LINE(SQLERRM);
     
 END;
