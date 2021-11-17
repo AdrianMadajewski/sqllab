@@ -114,9 +114,75 @@ BEGIN
     DELETE FROM pracownicy WHERE nazwisko = :old.nazwisko;
 END;
 
-DELETE FROM Szefowie
+DELETE FROM szefowie
 WHERE nazwisko LIKE 'MORZY';
 
 SELECT * FROM Szefowie;
 
+rollback;
+
 -- 6.
+ALTER TABLE zespoly
+    ADD liczba_pracownikow INTEGER;
+    
+UPDATE zespoly
+    SET liczba_pracownikow = (SELECT COUNT(id_prac) FROM pracownicy WHERE id_zesp = zespoly.id_zesp);
+
+CREATE OR REPLACE TRIGGER IluPracownikow
+    AFTER INSERT OR UPDATE OR DELETE ON pracownicy
+    FOR EACH ROW
+BEGIN 
+    CASE
+        WHEN INSERTING THEN
+            UPDATE zespoly
+                SET liczba_pracownikow = liczba_pracownikow + 1 WHERE id_zesp = :NEW.id_zesp;
+        WHEN DELETING THEN
+             UPDATE zespoly
+                SET liczba_pracownikow = liczba_pracownikow - 1 WHERE id_zesp = :OLD.id_zesp;
+        WHEN UPDATING THEN
+            UPDATE zespoly
+                SET liczba_pracownikow = liczba_pracownikow - 1 WHERE id_zesp = :OLD.id_zesp;
+            UPDATE zespoly
+                SET liczba_pracownikow = liczba_pracownikow + 1 WHERE id_zesp = :NEW.id_zesp;
+    END CASE;
+END;
+
+SELECT * FROM zespoly;
+
+INSERT INTO pracownicy(id_prac, nazwisko, id_zesp, id_szefa) 
+    VALUES(300,'NOWY PRACOWNIK',40,120);
+
+SELECT * FROM Zespoly;  
+
+UPDATE Pracownicy SET id_zesp = 10 WHERE id_zesp = 30; 
+
+rollback;
+
+-- 7.
+ALTER TABLE pracownicy DROP CONSTRAINT fk_id_szefa;
+ALTER TABLE pracownicy ADD CONSTRAINT fk_id_szefa FOREIGN KEY(id_szefa) REFERENCES pracownicy(id_prac) ON DELETE CASCADE;
+
+CREATE OR REPLACE TRIGGER Usun_Prac
+    AFTER DELETE ON pracownicy
+    FOR EACH ROW
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Usunieto: ' || :OLD.nazwisko);
+END;
+
+DELETE FROM pracownicy WHERE nazwisko = 'BLAZEWICZ';
+
+rollback;
+
+-- Po wykonaniu DELETE wypisuja sie najpierw nazwiska, a potem pracownik BLAZEWICZ
+-- Przed wykonaniem DELETE usuwa sie najpierw pracownik, a potem jego podwladni
+
+-- 8.
+ALTER TABLE pracownicy DISABLE ALL TRIGGERS;
+
+-- 9.
+SELECT * FROM user_triggers;
+
+DROP TRIGGER LOGUJOPERACJE;
+DROP TRIGGER USUNKASKADOWO;
+DROP TRIGGER USUN_PRAC;
+DROP TRIGGER UZUPELNIJID;
